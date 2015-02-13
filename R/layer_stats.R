@@ -295,53 +295,71 @@ ly_boxplot <- function(fig, x, y = NULL, data = NULL,
 # ly_violin
 
 # ly_bar
-#' Add a "hist" layer to a Bokeh figure
+#' Add a "bar" layer to a Bokeh figure
 #'
-#' Draws a histogram
+#' Draws a bar chart
 #' @param fig figure to modify
-#' @param x,breaks,freq,include.lowest,right parameters passed to \code{\link[graphics]{hist}}
-#' @param data an optional data frame, providing the source for x
+#' @param x either a numeric vector or a factor. If x is not provided
+#'  then the name or index of y will be used.  Note, x will be converted
+#'  to a categorical variable.
+#' @param y a numeric vector
+#' @param group values or field name of a grouping variable
+#' @param data an optional data frame, providing the source for x and y
+#' @param stacked logical so \code{TRUE} for a stacked bar chart
 #' @template par-coloralpha
 #' @template par-lnamegroup
 #' @template dots-fillline
 #' @family layer functions
 #' @export
-ly_hist <- function(fig, x, data = NULL,
-  breaks = "Sturges", freq = TRUE, include.lowest = TRUE, right = TRUE,
+ly_bar <- function(fig, x = NULL, y, group = NULL, data = NULL,
   color = NULL, alpha = 1,
   lname = NULL, lgroup = NULL, ...) {
 
   xname <- deparse(substitute(x))
-  yname <- ifelse(freq, "Frequency", "Density")
+  yname <- deparse(substitute(y))
   
-  validate_fig(fig, "ly_hist")
+  ###### turn back on ####
+  #validate_fig(fig, "ly_bar")
   
   ## deal with possible named inputs from a data source
   if(!is.null(data)) {
     x     <- v_eval(substitute(x), data)
-    # group <- v_eval(substitute(group), data)
+    y     <- v_eval(substitute(y), data)
+    group <- v_eval(substitute(group), data)
+  }
+
+  # translate the Python handler for the x data
+  #  if data is provided try to get the rownames from data
+  if ( is.null(x) && !is.null(data) ){
+    x <- rownames(data)
+  }
+  #  if no data then get names for y
+  if ( is.null(x) && !is.null(names(y)) ) {
+    x <- names(y)
+  }
+  #  if no data and no y names generate index 1:length(y)
+  if ( is.null(x) ) {
+    x <- 1:length(y)
   }
   
+  #  force x to be categorical
+  x <- as.character(x)
+
+  x_ax = seq(0, length(x) + 1)
+  
   lgroup <- get_lgroup(lgroup, fig)
-  
-  hh <- graphics::hist.default(x = x, breaks = breaks,
-   include.lowest = include.lowest, right = right, plot = FALSE)
-  
+
   args <- list(color = color, alpha = alpha, ...)
   
   args <- resolve_color_alpha(args, has_line = TRUE, has_fill = TRUE, fig$layers[[lgroup]])
   
-  y <- if(freq) {
-    hh$counts
-  } else {
-    hh$density
-  }
-  
   do.call(ly_rect, c(list(fig = fig,
-    xleft = hh$breaks[-length(hh$breaks)],
-    xright = hh$breaks[-1], ytop = y, ybottom = 0,
+    xleft = x_ax[-length(x_ax)] + 0.5,
+    xright = x_ax[-1] + 0.5,
+    ytop = ytop, ybottom = ybot,
     xlab = xname, ylab = yname,
-    lname = lname, lgroup = lgroup), args))
+    lname = lname, lgroup = lgroup), args)) %>%
+    x_range(as.character(x))
 }
 
 
