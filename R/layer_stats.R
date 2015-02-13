@@ -295,6 +295,55 @@ ly_boxplot <- function(fig, x, y = NULL, data = NULL,
 # ly_violin
 
 # ly_bar
+#' Add a "hist" layer to a Bokeh figure
+#'
+#' Draws a histogram
+#' @param fig figure to modify
+#' @param x,breaks,freq,include.lowest,right parameters passed to \code{\link[graphics]{hist}}
+#' @param data an optional data frame, providing the source for x
+#' @template par-coloralpha
+#' @template par-lnamegroup
+#' @template dots-fillline
+#' @family layer functions
+#' @export
+ly_hist <- function(fig, x, data = NULL,
+  breaks = "Sturges", freq = TRUE, include.lowest = TRUE, right = TRUE,
+  color = NULL, alpha = 1,
+  lname = NULL, lgroup = NULL, ...) {
+
+  xname <- deparse(substitute(x))
+  yname <- ifelse(freq, "Frequency", "Density")
+  
+  validate_fig(fig, "ly_hist")
+  
+  ## deal with possible named inputs from a data source
+  if(!is.null(data)) {
+    x     <- v_eval(substitute(x), data)
+    # group <- v_eval(substitute(group), data)
+  }
+  
+  lgroup <- get_lgroup(lgroup, fig)
+  
+  hh <- graphics::hist.default(x = x, breaks = breaks,
+   include.lowest = include.lowest, right = right, plot = FALSE)
+  
+  args <- list(color = color, alpha = alpha, ...)
+  
+  args <- resolve_color_alpha(args, has_line = TRUE, has_fill = TRUE, fig$layers[[lgroup]])
+  
+  y <- if(freq) {
+    hh$counts
+  } else {
+    hh$density
+  }
+  
+  do.call(ly_rect, c(list(fig = fig,
+    xleft = hh$breaks[-length(hh$breaks)],
+    xright = hh$breaks[-1], ytop = y, ybottom = 0,
+    xlab = xname, ylab = yname,
+    lname = lname, lgroup = lgroup), args))
+}
+
 
 # ly_dotplot
 
