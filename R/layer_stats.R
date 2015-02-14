@@ -312,11 +312,13 @@ ly_boxplot <- function(fig, x, y = NULL, data = NULL,
 #' @family layer functions
 #' @export
 ly_bar <- function(fig, x = NULL, y, group = NULL, data = NULL,
+  stacked = F,
   color = NULL, alpha = 1,
   lname = NULL, lgroup = NULL, ...) {
 
   xname <- deparse(substitute(x))
   yname <- deparse(substitute(y))
+  groupname <- deparse(substitute(group))
   
   ###### turn back on ####
   #validate_fig(fig, "ly_bar")
@@ -344,22 +346,59 @@ ly_bar <- function(fig, x = NULL, y, group = NULL, data = NULL,
   
   #  force x to be categorical
   x <- as.character(x)
-
-  x_ax = seq(0, length(x) + 1)
+  x_ax = seq( 1, length(x)  )  
   
+  # just deal with no stack first
+  ytop <- y
+  ybot <- rep(0,length(ytop))
+  
+  group_data <- NULL
+  #  get unique groups or levels if factors
+  group_uniq <- NULL
+  if(!is.null(group)) {
+    if (is.factor(group)) {
+      group_uniq <- levels(group)
+    } else {
+      group_uniq <- unique(group)
+    }
+    
+    group_uniq <- as.character(group_uniq)
+    
+    group_data <- expand.grid( group_uniq, unique(x), stringsAsFactors = F )
+    group_data <- group_data[order(group_data[,1]),]
+    colnames(group_data) <- c( groupname, xname )
+
+    x_ax <- unlist(lapply(
+      1:length(group_uniq),
+      function(n){
+        seq(
+          (length(unique(x)) + 1) * (n - 1) + 1
+          , (length(unique(x)) + 1) * (n - 1) + length(unique(x))
+        )
+      }
+    ))
+    
+    ytop <- merge(group_data,data)[,yname]
+    ybot <- rep(0,length(ytop))    
+  }
+
+  if( !stacked ) {
+
+  }
+
   lgroup <- get_lgroup(lgroup, fig)
 
   args <- list(color = color, alpha = alpha, ...)
   
   args <- resolve_color_alpha(args, has_line = TRUE, has_fill = TRUE, fig$layers[[lgroup]])
-  
+  print(x_ax)
   do.call(ly_rect, c(list(fig = fig,
-    xleft = x_ax[-length(x_ax)] + 0.5,
-    xright = x_ax[-1] + 0.5,
+    xleft = x_ax,
+    xright = x_ax + 1,
     ytop = ytop, ybottom = ybot,
     xlab = xname, ylab = yname,
-    lname = lname, lgroup = lgroup), args)) %>%
-    x_range(as.character(x))
+    lname = lname, lgroup = lgroup), args))
+  
 }
 
 
