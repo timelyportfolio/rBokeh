@@ -8,3 +8,5 @@ NEWS\.md
 ^_ignore$
 \.sublime\-
 .Rproj
+^.*\.Rproj$
+^\.Rproj\.user$
